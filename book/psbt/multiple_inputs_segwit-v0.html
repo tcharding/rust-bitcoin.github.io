@@ -24,28 +24,40 @@
         <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" href="../highlight.css">
-        <link rel="stylesheet" href="../tomorrow-night.css">
-        <link rel="stylesheet" href="../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "../";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -59,7 +71,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -72,8 +85,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -109,13 +122,14 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -180,16 +194,13 @@ roles:</p>
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::str::FromStr;
 
-use bitcoin::bip32::{ChildNumber, IntoDerivationPath, Fingerprint, Xpriv, Xpub};
+use bitcoin::bip32::{ChildNumber, Fingerprint, IntoDerivationPath as _, Xpriv, Xpub};
 use bitcoin::hashes::Hash;
 use bitcoin::locktime::absolute;
-use bitcoin::psbt::Input;
-use bitcoin::secp256k1::{self, Message, Secp256k1, Signing};
-use bitcoin::consensus;
-use bitcoin::transaction::{self, OutPoint, TxIn, TxOut};
+use bitcoin::secp256k1::{Secp256k1, Signing};
 use bitcoin::{
-    Address, Amount, EcdsaSighashType, Network, Psbt, ScriptBuf, Sequence,
-    Txid, WPubkeyHash, Witness, XOnlyPublicKey,
+    consensus, psbt, transaction, Address, Amount, EcdsaSighashType, Network, OutPoint, Psbt,
+    ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, WPubkeyHash, Witness,
 };</code></pre>
 <p>Here is the logic behind these imports:</p>
 <ul>
@@ -198,10 +209,9 @@ use bitcoin::{
 <li><code>bitcoin::bip32</code> is used to derive keys according to <a href="https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki">BIP 32</a></li>
 <li><code>bitcoin::hashes::Hash</code> is used to hash data</li>
 <li><code>bitcoin::locktime::absolute</code> is used to create a locktime</li>
-<li><code>bitcoin::psbt</code> is used to construct and manipulate PSBTs</li>
 <li><code>bitcoin::secp256k1</code> is used to sign transactions</li>
-<li><code>bitcoin::sighash</code> is used to create SegWit V0 sighashes</li>
 <li><code>bitcoin::consensus</code> is used to serialize the final signed transaction to a raw transaction</li>
+<li><code>bitcoin::psbt</code> is used to construct and manipulate PSBTs</li>
 <li><code>bitcoin::transaction</code> and <code>bitcoin::{Address, Network, OutPoint, ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, Witness}</code> are used to construct transactions</li>
 <li><code>bitcoin::WPubkeyHash</code> is used to construct SegWit V0 inputs</li>
 </ul>
@@ -222,7 +232,7 @@ Since this is a mainnet example, we are using the path <code>m/84'/0'/0'</code>.
 <li><code>DUMMY_UTXO_AMOUNT_INPUT_1</code> is the amount of the dummy UTXO we will be spending from the first input.</li>
 <li><code>DUMMY_UTXO_AMOUNT_INPUT_2</code> is the amount of the dummy UTXO we will be spending from the second input.</li>
 <li><code>SPEND_AMOUNT</code> is the amount we will be spending from the dummy UTXO related to the first input.</li>
-<li><code>CHANGE_AMOUNT</code><sup class="footnote-reference"><a href="#change">1</a></sup> is the amount we will be sending back to ourselves as change.</li>
+<li><code>CHANGE_AMOUNT</code><sup class="footnote-reference" id="fr-change-1"><a href="#footnote-change">1</a></sup> is the amount we will be sending back to ourselves as change.</li>
 </ul>
 <p>Before we can construct the transaction, we need to define some helper functions:</p>
 <pre><code class="language-rust"><span class="boring">use std::collections::BTreeMap;
@@ -320,7 +330,7 @@ generic over the <a href="https://docs.rs/secp256k1/0.29.0/secp256k1/trait.Signi
 This is used to indicate that is an instance of <code>Secp256k1</code> and can be used for signing and other things.</p>
 <p><code>receivers_address</code> generates a receiver address.
 In a real application this would be the address of the receiver.
-We use the method <code>Address::from_str</code> to parse the string of addresses<sup class="footnote-reference"><a href="#arbitrary_address">2</a></sup> into an <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/struct.Address.html"><code>Address</code></a>.
+We use the method <code>Address::from_str</code> to parse the string of addresses<sup class="footnote-reference" id="fr-arbitrary_address-1"><a href="#footnote-arbitrary_address">2</a></sup> into an <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/struct.Address.html"><code>Address</code></a>.
 Hence, it is necessary to import the <code>std::str::FromStr</code> trait.
 This is an arbitrary, however valid, Bitcoin mainnet address.
 Hence we use the <code>require_network</code> method to ensure that the address is valid for mainnet.</p>
@@ -336,14 +346,13 @@ while also extracting a transaction that spends the <code>p2wpkh</code>s unspent
 <pre><code class="language-rust"><span class="boring">use std::collections::BTreeMap;
 </span><span class="boring">use std::str::FromStr;
 </span><span class="boring">
-</span><span class="boring">use bitcoin::bip32::{ChildNumber, IntoDerivationPath, Fingerprint, Xpriv, Xpub};
+</span><span class="boring">use bitcoin::bip32::{ChildNumber, Fingerprint, IntoDerivationPath as _, Xpriv, Xpub};
 </span><span class="boring">use bitcoin::hashes::Hash;
 </span><span class="boring">use bitcoin::locktime::absolute;
-</span><span class="boring">use bitcoin::psbt::{Input, PsbtSighashType};
 </span><span class="boring">use bitcoin::secp256k1::{Secp256k1, Signing};
 </span><span class="boring">use bitcoin::{
-</span><span class="boring">    consensus, transaction, Address, Amount, EcdsaSighashType, Network, OutPoint, Psbt, ScriptBuf, Sequence,
-</span><span class="boring">    Transaction, TxIn, TxOut, Txid, WPubkeyHash, Witness,
+</span><span class="boring">    consensus, psbt, transaction, Address, Amount, EcdsaSighashType, Network, OutPoint, Psbt,
+</span><span class="boring">    ScriptBuf, Sequence, Transaction, TxIn, TxOut, Txid, WPubkeyHash, Witness,
 </span><span class="boring">};
 </span><span class="boring">
 </span><span class="boring">const XPRIV: &amp;str = "xprv9tuogRdb5YTgcL3P8Waj7REqDuQx4sXcodQaWTtEVFEp6yRKh1CjrWfXChnhgHeLDuXxo2auDZegMiVMGGxwxcrb2PmiGyCngLxvLeGsZRq";
@@ -511,14 +520,14 @@ while also extracting a transaction that spends the <code>p2wpkh</code>s unspent
         bip32_derivations.push(map);
     }
     psbt.inputs = vec![
-        Input {
+        psbt::Input {
             witness_utxo: Some(utxos[0].clone()),
             redeem_script: Some(ScriptBuf::new_p2wpkh(&amp;wpkhs[0])),
             bip32_derivation: bip32_derivations[0].clone(),
             sighash_type: Some(ty),
             ..Default::default()
         },
-        Input {
+        psbt::Input {
             witness_utxo: Some(utxos[1].clone()),
             redeem_script: Some(ScriptBuf::new_p2wpkh(&amp;wpkhs[1])),
             bip32_derivation: bip32_derivations[1].clone(),
@@ -597,7 +606,7 @@ We are using the <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/address/struct.
 This will lock the output to the receiver's address.</li>
 </ul>
 <p>In <code>let change = TxOut {...}</code> we are instantiating the change output.
-It is very similar to the <code>spend</code> output, but we are now using the <code>const CHANGE_AMOUNT</code> that we defined earlier<sup class="footnote-reference"><a href="#spend">3</a></sup>.
+It is very similar to the <code>spend</code> output, but we are now using the <code>const CHANGE_AMOUNT</code> that we defined earlier<sup class="footnote-reference" id="fr-spend-1"><a href="#footnote-spend">3</a></sup>.
 This is done by setting the <code>script_pubkey</code> field to <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/blockdata/script/struct.ScriptBuf.html#method.new_p2wpkh"><code>ScriptBuf::new_p2wpkh(...)</code></a>,
 which generates P2WPKH-type of script pubkey.</p>
 <p>In <code>let unsigned_tx = Transaction {...}</code> we are instantiating the transaction we want to sign and broadcast using the <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/blockdata/transaction/struct.Transaction.html"><code>Transaction</code></a> struct.
@@ -664,18 +673,19 @@ It provides a
 <a href="https://docs.rs/miniscript/11.0.0/miniscript/psbt/trait.PsbtExt.html#tymethod.finalize_mut"><code>.finalize_mut</code></a>
 to a <a href="https://docs.rs/bitcoin/0.32.0/bitcoin/psbt/struct.Psbt.html"><code>Psbt</code></a> object,
 which takes in a mutable reference to <code>Psbt</code> and populates the <code>final_witness</code> and <code>final_scriptsig</code> for all inputs.</p>
-<div class="footnote-definition" id="change"><sup class="footnote-definition-label">1</sup>
+<hr>
+<ol class="footnote-definition"><li id="footnote-change">
 <p>Please note that the <code>CHANGE_AMOUNT</code> is not the same as the <code>DUMMY_UTXO_AMOUNT_INPUT_N</code>s minus the <code>SPEND_AMOUNT</code>.
-This is due to the fact that we need to pay a miner's fee for the transaction.</p>
-</div>
-<div class="footnote-definition" id="arbitrary_address"><sup class="footnote-definition-label">2</sup>
-<p>this is an arbitrary mainnet addresses from block 805222.</p>
-</div>
-<div class="footnote-definition" id="spend"><sup class="footnote-definition-label">3</sup>
+This is due to the fact that we need to pay a miner's fee for the transaction. <a href="#fr-change-1">↩</a></p>
+</li>
+<li id="footnote-arbitrary_address">
+<p>this is an arbitrary mainnet addresses from block 805222. <a href="#fr-arbitrary_address-1">↩</a></p>
+</li>
+<li id="footnote-spend">
 <p>And also we are locking the output to an address that we control:
-the <code>wpkh</code> public key hash that we generated earlier.</p>
-</div>
-
+the <code>wpkh</code> public key hash that we generated earlier. <a href="#fr-spend-1">↩</a></p>
+</li>
+</ol>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
